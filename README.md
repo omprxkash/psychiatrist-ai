@@ -49,7 +49,7 @@ For the full setup with Ollama and trained models, see [Running the full pipelin
 
 ## Screenshots
 
-See the [live project page](https://omprxkash.github.io/psychiatrist-ai/) for a full walkthrough with screenshots.
+See the [images folder](https://github.com/omprxkash/psychiatrist-ai/tree/main/images) for all screenshots.
 
 ---
 
