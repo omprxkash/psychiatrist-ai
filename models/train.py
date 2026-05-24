@@ -19,7 +19,6 @@ import pickle
 from pathlib import Path
 
 import mlflow
-import numpy as np
 import pandas as pd
 
 from models.severity.features import SEVERITY_BANDS, prepare
@@ -43,11 +42,11 @@ def _train_severity(args: argparse.Namespace):
     num_classes = len(SEVERITY_BANDS)
     class_labels = list(le.classes_)
 
-    X_tr, y_tr = splits["train"]["X"], splits["train"]["y"]
+    x_tr, y_tr = splits["train"]["X"], splits["train"]["y"]
     y_ord_tr = splits["train"]["y_ordinal"]
-    X_val, y_val = splits["val"]["X"], splits["val"]["y"]
+    x_val, y_val = splits["val"]["X"], splits["val"]["y"]
     y_ord_val = splits["val"]["y_ordinal"]
-    X_te, y_te = splits["test"]["X"], splits["test"]["y"]
+    x_te, y_te = splits["test"]["X"], splits["test"]["y"]
     df_val_meta = splits["val"]["df"]
 
     mlflow.set_experiment(args.experiment_name)
@@ -55,10 +54,10 @@ def _train_severity(args: argparse.Namespace):
     with mlflow.start_run(run_name=f"severity-{args.model}"):
         mlflow.log_param("model", args.model)
         mlflow.log_param("data_path", str(data_path))
-        mlflow.log_param("n_train", len(X_tr))
-        mlflow.log_param("n_val", len(X_val))
-        mlflow.log_param("n_test", len(X_te))
-        mlflow.log_param("num_features", X_tr.shape[1])
+        mlflow.log_param("n_train", len(x_tr))
+        mlflow.log_param("n_val", len(x_val))
+        mlflow.log_param("n_test", len(x_te))
+        mlflow.log_param("num_features", x_tr.shape[1])
 
         # Persist preprocessing artifacts
         artifact_dir = Path("mlartifacts") / "preprocessor"
@@ -74,14 +73,14 @@ def _train_severity(args: argparse.Namespace):
         models_trained = []
 
         if args.model in ("xgboost", "all"):
-            from models.severity.xgboost_model import train as xgb_train, evaluate as xgb_eval
+            from models.severity.xgboost_model import evaluate as xgb_eval, train as xgb_train
             print("\n── XGBoost ──")
             xgb_clf, xgb_val_metrics = xgb_train(
-                X_tr, y_tr, X_val, y_val,
+                x_tr, y_tr, x_val, y_val,
                 num_classes=num_classes,
                 run_name="xgboost-severity",
             )
-            xgb_test_metrics = xgb_eval(xgb_clf, X_te, y_te, prefix="test")
+            xgb_test_metrics = xgb_eval(xgb_clf, x_te, y_te, prefix="test")
             mlflow.log_metrics(xgb_test_metrics)
             models_trained.append(("xgboost", xgb_clf))
             print(f"XGBoost val macro F1: {xgb_val_metrics.get('val_macro_f1', 'n/a'):.4f}")
@@ -89,6 +88,7 @@ def _train_severity(args: argparse.Namespace):
         if args.model in ("lightgbm", "all"):
             from lightgbm import LGBMClassifier
             from sklearn.calibration import CalibratedClassifierCV
+
             from models.severity.xgboost_model import evaluate as lgb_eval
             print("\n── LightGBM ──")
             with mlflow.start_run(run_name="lightgbm-severity", nested=True):
@@ -99,20 +99,20 @@ def _train_severity(args: argparse.Namespace):
                 )
                 mlflow.log_params(lgb_params)
                 lgb_clf = LGBMClassifier(**lgb_params)
-                lgb_clf.fit(X_tr, y_tr, eval_set=[(X_val, y_val)])
+                lgb_clf.fit(x_tr, y_tr, eval_set=[(x_val, y_val)])
                 lgb_clf = CalibratedClassifierCV(lgb_clf, cv="prefit", method="isotonic")
-                lgb_clf.fit(X_val, y_val)
-                lgb_val_m = lgb_eval(lgb_clf, X_val, y_val, prefix="val")
+                lgb_clf.fit(x_val, y_val)
+                lgb_val_m = lgb_eval(lgb_clf, x_val, y_val, prefix="val")
                 mlflow.log_metrics(lgb_val_m)
                 mlflow.sklearn.log_model(lgb_clf, artifact_path="lightgbm-severity")
             models_trained.append(("lightgbm", lgb_clf))
             print(f"LightGBM val macro F1: {lgb_val_m.get('val_macro_f1', 'n/a'):.4f}")
 
         if args.model in ("torch_mlp", "all"):
-            from models.severity.torch_mlp import MLPConfig, train as mlp_train, predict_proba
+            from models.severity.torch_mlp import MLPConfig, train as mlp_train
             print("\n── PyTorch MLP ──")
             cfg = MLPConfig(
-                input_dim=X_tr.shape[1],
+                input_dim=x_tr.shape[1],
                 num_classes=num_classes,
                 hidden_dims=[256, 128, 64],
                 dropout=0.3,
@@ -121,7 +121,7 @@ def _train_severity(args: argparse.Namespace):
                 batch_size=512,
             )
             mlp_model, mlp_metrics = mlp_train(
-                X_tr, y_tr, y_ord_tr, X_val, y_val, y_ord_val, cfg,
+                x_tr, y_tr, y_ord_tr, x_val, y_val, y_ord_val, cfg,
                 run_name="torch-mlp-severity",
             )
             models_trained.append(("torch_mlp", mlp_model))
@@ -132,26 +132,26 @@ def _train_severity(args: argparse.Namespace):
             best_name, best_clf = models_trained[0]
             print(f"\n── Full evaluation on val set (model: {best_name}) ──")
             from models.severity.evaluation import (
+                compute_fairness_slices,
                 compute_shap,
-                log_shap_plots,
                 log_calibration_curves,
                 log_confusion_matrix,
-                compute_fairness_slices,
                 log_fairness_report,
+                log_shap_plots,
             )
 
-            y_pred_val = best_clf.predict(X_val)
+            y_pred_val = best_clf.predict(x_val)
             log_confusion_matrix(y_val, y_pred_val, class_labels)
-            log_calibration_curves(best_clf, X_val, y_val, class_labels)
+            log_calibration_curves(best_clf, x_val, y_val, class_labels)
 
             print("Computing SHAP values (may take a moment) ...")
             try:
-                shap_vals = compute_shap(best_clf, X_val, feature_names)
+                shap_vals = compute_shap(best_clf, x_val, feature_names)
                 log_shap_plots(shap_vals, feature_names, class_labels)
             except Exception as e:
                 print(f"SHAP skipped: {e}")
 
-            fairness_df = compute_fairness_slices(best_clf, X_val, y_val, df_val_meta)
+            fairness_df = compute_fairness_slices(best_clf, x_val, y_val, df_val_meta)
             log_fairness_report(fairness_df)
             print("\nFairness slices:")
             print(fairness_df.to_string(index=False))

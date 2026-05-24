@@ -24,7 +24,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -95,7 +94,7 @@ def load_dataset(parquet_path: str | Path, split: str = "train") -> pd.DataFrame
     df = pd.read_parquet(str(parquet_path), filters=[("split", "=", split)])
     df = df.dropna(subset=["text", "subreddit"]).copy()
     df["labels"] = df.apply(lambda r: _text_to_labels(r["text"], r["subreddit"]), axis=1)
-    df["si_label"] = df["labels"].apply(lambda l: l[SYMPTOM_LABELS.index("suicidal_ideation")])
+    df["si_label"] = df["labels"].apply(lambda row: row[SYMPTOM_LABELS.index("suicidal_ideation")])
     return df
 
 

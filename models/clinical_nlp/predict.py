@@ -58,7 +58,7 @@ class ClinicalNLPPredictor:
         cls,
         checkpoint_root: str | Path,
         quantized: bool = True,
-    ) -> "ClinicalNLPPredictor":
+    ) -> ClinicalNLPPredictor:
         root = Path(checkpoint_root)
         ml_dir = root / "multilabel" / ("int8" if quantized else "best")
         si_dir = root / "si_binary" / ("int8" if quantized else "best")
@@ -82,13 +82,13 @@ class ClinicalNLPPredictor:
         si_prob = self._predict_si(text)
 
         active_symptoms = [
-            label for label, prob in zip(SYMPTOM_LABELS, symptom_probs)
+            label for label, prob in zip(SYMPTOM_LABELS, symptom_probs, strict=False)
             if prob >= SYMPTOM_THRESHOLD
         ]
 
         return ClinicalNLPResult(
             text=text,
-            symptoms=dict(zip(SYMPTOM_LABELS, symptom_probs.tolist())),
+            symptoms=dict(zip(SYMPTOM_LABELS, symptom_probs.tolist(), strict=False)),
             suicidal_ideation_prob=float(si_prob),
             suicidal_ideation_positive=si_prob >= SI_THRESHOLD,
             active_symptoms=active_symptoms,

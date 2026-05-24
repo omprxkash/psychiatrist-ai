@@ -41,10 +41,11 @@ class DSMLiteratureAgent:
         cls,
         index_root: str = "rag/indexes",
         llm=None,
-    ) -> "DSMLiteratureAgent":
+    ) -> DSMLiteratureAgent:
         from pathlib import Path
-        from rag.retriever import HybridRetriever
+
         from rag.chain import build_rag_chain
+        from rag.retriever import HybridRetriever
 
         index_dirs = {
             "dsm": Path(index_root) / "dsm",

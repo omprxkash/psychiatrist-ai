@@ -14,6 +14,7 @@ by ~8 pp on RAGAS context-precision on the DSM evaluation set.
 from __future__ import annotations
 
 import pickle
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -44,7 +45,7 @@ class IndexStore:
     bm25: BM25Okapi = field(repr=False)
 
     @classmethod
-    def load(cls, index_dir: Path) -> "IndexStore":
+    def load(cls, index_dir: Path) -> IndexStore:
         faiss_index = faiss.read_index(str(index_dir / "faiss.index"))
         with open(index_dir / "chunks.pkl", "rb") as f:
             chunks = pickle.load(f)
@@ -77,7 +78,7 @@ class HybridRetriever:
         cls,
         index_dirs: dict[str, Path],
         **kwargs,
-    ) -> "HybridRetriever":
+    ) -> HybridRetriever:
         stores = {name: IndexStore.load(path) for name, path in index_dirs.items()}
         return cls(stores=stores, **kwargs)
 
@@ -142,7 +143,7 @@ class HybridRetriever:
         q_emb = enc.encode([query], normalize_embeddings=True).astype(np.float32)
         scores, indices = store.faiss_index.search(q_emb, self.k_dense)
         results = []
-        for score, idx in zip(scores[0], indices[0]):
+        for score, idx in zip(scores[0], indices[0], strict=False):
             if idx >= 0:
                 results.append((store.chunks[idx], store.metadata[idx], float(score)))
         return results
@@ -154,7 +155,7 @@ class HybridRetriever:
         pairs = [(query, text) for text, _, _ in candidates]
         rerank_scores = reranker.predict(pairs)
         ranked = sorted(
-            zip(rerank_scores, candidates), key=lambda x: x[0], reverse=True
+            zip(rerank_scores, candidates, strict=False), key=lambda x: x[0], reverse=True
         )
         return [
             RetrievedChunk(

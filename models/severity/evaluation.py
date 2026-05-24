@@ -7,7 +7,6 @@ All outputs are saved as MLflow artifacts so they appear in the experiment UI.
 from __future__ import annotations
 
 import io
-from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -17,7 +16,6 @@ import pandas as pd
 from sklearn.calibration import CalibrationDisplay
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
-    classification_report,
     cohen_kappa_score,
     f1_score,
 )
@@ -27,18 +25,18 @@ from sklearn.metrics import (
 
 def compute_shap(
     clf: Any,
-    X: np.ndarray,
+    x: np.ndarray,
     feature_names: list[str],
     max_samples: int = 2000,
-) -> "shap.Explanation":
+) -> Any:
     try:
         import shap
     except ImportError as e:
         raise ImportError("shap is required: pip install shap") from e
 
-    X_sample = X[:max_samples]
-    explainer = shap.TreeExplainer(clf) if hasattr(clf, "get_booster") else shap.Explainer(clf, X_sample)
-    return explainer(X_sample)
+    x_sample = x[:max_samples]
+    explainer = shap.TreeExplainer(clf) if hasattr(clf, "get_booster") else shap.Explainer(clf, x_sample)
+    return explainer(x_sample)
 
 
 def log_shap_plots(shap_values, feature_names: list[str], class_labels: list[str]):
@@ -72,12 +70,12 @@ def log_shap_plots(shap_values, feature_names: list[str], class_labels: list[str
 
 def log_calibration_curves(
     clf: Any,
-    X: np.ndarray,
+    x: np.ndarray,
     y: np.ndarray,
     class_labels: list[str],
 ):
     """One-vs-rest calibration curve per severity band."""
-    y_proba = clf.predict_proba(X)
+    y_proba = clf.predict_proba(x)
     n_classes = y_proba.shape[1]
 
     fig, axes = plt.subplots(1, n_classes, figsize=(5 * n_classes, 4), sharey=True)
@@ -138,7 +136,7 @@ def _age_band(age: int) -> str:
 
 def compute_fairness_slices(
     clf: Any,
-    X: np.ndarray,
+    x: np.ndarray,
     y_true: np.ndarray,
     df_meta: pd.DataFrame,
 ) -> pd.DataFrame:
@@ -151,7 +149,7 @@ def compute_fairness_slices(
     if "age" in df_meta.columns:
         df_meta["age_band"] = df_meta["age"].apply(_age_band)
 
-    y_pred = clf.predict(X)
+    y_pred = clf.predict(x)
     records = []
 
     for col, vals in FAIRNESS_SLICES.items():
@@ -201,7 +199,7 @@ def _log_fairness_chart(fairness_df: pd.DataFrame):
     if n_cols == 1:
         axes = [axes]
 
-    for ax, (col, group) in zip(axes, fairness_df.groupby("slice_col")):
+    for ax, (col, group) in zip(axes, fairness_df.groupby("slice_col"), strict=False):
         ax.barh(group["slice_val"], group["weighted_f1"], color="steelblue")
         ax.set_xlim(0, 1)
         ax.set_xlabel("Weighted F1")

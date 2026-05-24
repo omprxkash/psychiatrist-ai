@@ -22,8 +22,8 @@ from pathlib import Path
 
 import numpy as np
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql import types as T
+from pyspark.sql import functions as F  # noqa: N812
+from pyspark.sql import types as T  # noqa: N812
 
 PHQ9_ITEMS = [
     "phq1_anhedonia",
@@ -100,6 +100,19 @@ def gad7_severity_band(total: int) -> str:
     return "severe"
 
 
+def _items(
+    latent_value: float,
+    thresholds: np.ndarray,
+    rng: np.random.Generator,
+) -> list[int]:
+    noise = rng.standard_normal(len(thresholds)) * 0.6
+    shifted = latent_value + noise
+    out = np.zeros(len(thresholds), dtype=np.int32)
+    for i, row_thresh in enumerate(thresholds):
+        out[i] = int((shifted[i] > row_thresh).sum())
+    return out.tolist()
+
+
 def _sample_partition(iterator, depression_thresholds, anxiety_thresholds, seed_base):
     """Generate one subject per input row index using a per-partition RNG."""
     for row in iterator:
@@ -129,16 +142,8 @@ def _sample_partition(iterator, depression_thresholds, anxiety_thresholds, seed_
         # Anxiety latent: correlated with depression latent (r ~ 0.65).
         anxiety_latent = 0.65 * latent + float(rng.standard_normal()) * np.sqrt(1 - 0.65**2)
 
-        def _items(latent_value: float, thresholds: np.ndarray) -> list[int]:
-            noise = rng.standard_normal(len(thresholds)) * 0.6
-            shifted = latent_value + noise
-            out = np.zeros(len(thresholds), dtype=np.int32)
-            for i, row_thresh in enumerate(thresholds):
-                out[i] = int((shifted[i] > row_thresh).sum())
-            return out.tolist()
-
-        phq_items = _items(latent, depression_thresholds)
-        gad_items = _items(anxiety_latent, anxiety_thresholds)
+        phq_items = _items(latent, depression_thresholds, rng)
+        gad_items = _items(anxiety_latent, anxiety_thresholds, rng)
 
         phq_total = int(sum(phq_items))
         gad_total = int(sum(gad_items))

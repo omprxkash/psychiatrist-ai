@@ -74,11 +74,16 @@ class TestGenerator:
         for _, row in df.iterrows():
             t = int(row["phq9_total"])
             b = row["phq9_band"]
-            if t <= 4:    expected = "none"
-            elif t <= 9:  expected = "mild"
-            elif t <= 14: expected = "moderate"
-            elif t <= 19: expected = "moderately_severe"
-            else:         expected = "severe"
+            if t <= 4:
+                expected = "none"
+            elif t <= 9:
+                expected = "mild"
+            elif t <= 14:
+                expected = "moderate"
+            elif t <= 19:
+                expected = "moderately_severe"
+            else:
+                expected = "severe"
             assert b == expected, f"PHQ-9 total {t} → expected {expected}, got {b}"
 
     def test_suicidal_ideation_prevalence_correlates_with_severity(self):

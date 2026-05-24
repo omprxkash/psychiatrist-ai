@@ -131,9 +131,8 @@ def generate(n: int = 50_000, seed: int = 42) -> pd.DataFrame:
         if group[i] >= 3:         # moderately_severe or severe
             if rng.random() < 0.45:
                 phq9_items_raw[i, 8] = int(rng.choice([1, 2, 3], p=[0.5, 0.3, 0.2]))
-        elif group[i] == 2:       # moderate
-            if rng.random() < 0.12:
-                phq9_items_raw[i, 8] = 1
+        elif group[i] == 2 and rng.random() < 0.12:       # moderate
+            phq9_items_raw[i, 8] = 1
 
     phq9_total = phq9_items_raw.sum(axis=1).astype(int)
     gad7_total = np.clip(gad7_items_raw.sum(axis=1), 0, 21).astype(int)

@@ -13,7 +13,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
 PHQ9_ITEMS = [
@@ -51,7 +50,6 @@ def add_derived(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_preprocessor() -> ColumnTransformer:
-    all_feature_cols = NUMERIC_COLS + DERIVED_COLS + BINARY_COLS + CATEGORICAL_COLS
     return ColumnTransformer(
         transformers=[
             ("num", StandardScaler(), NUMERIC_COLS + DERIVED_COLS),
@@ -92,12 +90,12 @@ def prepare(
 
     for split in ("train", "val", "test"):
         part = df[df[split_col] == split].copy()
-        X = preprocessor.transform(part)
+        x = preprocessor.transform(part)
         y_label = part[target_col].values
         y = le.transform(y_label)
         y_ordinal = np.array([BAND_TO_INT[b] for b in y_label])
         splits[split] = {
-            "X": X.astype(np.float32),
+            "X": x.astype(np.float32),
             "y": y,
             "y_ordinal": y_ordinal,
             "df": part,

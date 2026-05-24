@@ -37,7 +37,7 @@ class CarePlanAgent:
         self._llm = llm
 
     @classmethod
-    def from_ollama(cls, model: str = "llama3.2") -> "CarePlanAgent":
+    def from_ollama(cls, model: str = "llama3.2") -> CarePlanAgent:
         try:
             from langchain_community.llms import Ollama
             return cls(llm=Ollama(model=model))
@@ -127,4 +127,4 @@ def _parse_suggestions(content: str) -> list[str]:
 
     # Fallback: extract lines starting with "Consider:"
     lines = [line.strip() for line in content.split("\n")]
-    return [l for l in lines if l.startswith("Consider:")][:5]
+    return [line for line in lines if line.startswith("Consider:")][:5]

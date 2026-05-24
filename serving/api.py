@@ -213,7 +213,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
     try:
         final_state = _graph.invoke(initial_state)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Graph error: {e}")
+        raise HTTPException(status_code=500, detail=f"Graph error: {e}") from e
     elapsed_ms = (time.perf_counter() - t0) * 1000
 
     citations = [Citation(**c) for c in (final_state.get("citations") or [])]

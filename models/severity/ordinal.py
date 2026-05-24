@@ -29,9 +29,9 @@ def _import_mord():
 
 
 def train_ordinal_ridge(
-    X_train: np.ndarray,
+    x_train: np.ndarray,
     y_train: np.ndarray,
-    X_val: np.ndarray,
+    x_val: np.ndarray,
     y_val: np.ndarray,
     alpha: float = 1.0,
     run_name: str = "ordinal-ridge",
@@ -40,17 +40,17 @@ def train_ordinal_ridge(
     with mlflow.start_run(run_name=run_name, nested=True):
         mlflow.log_param("alpha", alpha)
         clf = mord.OrdinalRidge(alpha=alpha)
-        clf.fit(X_train, y_train)
-        metrics = _evaluate(clf, X_val, y_val, prefix="val")
+        clf.fit(x_train, y_train)
+        metrics = _evaluate(clf, x_val, y_val, prefix="val")
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(clf, artifact_path="ordinal-ridge")
     return clf, metrics
 
 
 def train_logistic_at(
-    X_train: np.ndarray,
+    x_train: np.ndarray,
     y_train: np.ndarray,
-    X_val: np.ndarray,
+    x_val: np.ndarray,
     y_val: np.ndarray,
     alpha: float = 1.0,
     run_name: str = "logistic-at",
@@ -59,15 +59,15 @@ def train_logistic_at(
     with mlflow.start_run(run_name=run_name, nested=True):
         mlflow.log_param("alpha", alpha)
         clf = mord.LogisticAT(alpha=alpha)
-        clf.fit(X_train, y_train)
-        metrics = _evaluate(clf, X_val, y_val, prefix="val")
+        clf.fit(x_train, y_train)
+        metrics = _evaluate(clf, x_val, y_val, prefix="val")
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(clf, artifact_path="logistic-at")
     return clf, metrics
 
 
-def _evaluate(clf, X: np.ndarray, y: np.ndarray, prefix: str = "val") -> dict:
-    y_pred = clf.predict(X).round().astype(int).clip(0, y.max())
+def _evaluate(clf, x: np.ndarray, y: np.ndarray, prefix: str = "val") -> dict:
+    y_pred = clf.predict(x).round().astype(int).clip(0, y.max())
     mae = mean_absolute_error(y, y_pred)
     kappa = cohen_kappa_score(y, y_pred, weights="quadratic")
     return {

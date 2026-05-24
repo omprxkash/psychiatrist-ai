@@ -28,8 +28,7 @@ import argparse
 from pathlib import Path
 
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql import types as T
+from pyspark.sql import functions as F  # noqa: N812
 
 LABEL_MAP = {
     "depression": "depression",

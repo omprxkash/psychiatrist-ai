@@ -10,7 +10,6 @@ Architecture:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 import mlflow
 import numpy as np
@@ -40,7 +39,7 @@ class SeverityMLP(nn.Module):
         super().__init__()
         dims = [cfg.input_dim] + cfg.hidden_dims
         layers = []
-        for in_d, out_d in zip(dims[:-1], dims[1:]):
+        for in_d, out_d in zip(dims[:-1], dims[1:], strict=False):
             layers += [
                 nn.Linear(in_d, out_d),
                 nn.BatchNorm1d(out_d),
@@ -64,9 +63,9 @@ class SeverityMLP(nn.Module):
         return self.clf_head(h), self.reg_head(h).squeeze(-1)
 
 
-def _make_loader(X, y, y_ord, batch_size: int, shuffle: bool) -> DataLoader:
+def _make_loader(x, y, y_ord, batch_size: int, shuffle: bool) -> DataLoader:
     dataset = TensorDataset(
-        torch.tensor(X, dtype=torch.float32),
+        torch.tensor(x, dtype=torch.float32),
         torch.tensor(y, dtype=torch.long),
         torch.tensor(y_ord, dtype=torch.float32),
     )
@@ -74,10 +73,10 @@ def _make_loader(X, y, y_ord, batch_size: int, shuffle: bool) -> DataLoader:
 
 
 def train(
-    X_train: np.ndarray,
+    x_train: np.ndarray,
     y_train: np.ndarray,
     y_ord_train: np.ndarray,
-    X_val: np.ndarray,
+    x_val: np.ndarray,
     y_val: np.ndarray,
     y_ord_val: np.ndarray,
     cfg: MLPConfig,
@@ -92,8 +91,8 @@ def train(
     clf_loss_fn = nn.CrossEntropyLoss()
     reg_loss_fn = nn.MSELoss()
 
-    train_loader = _make_loader(X_train, y_train, y_ord_train, cfg.batch_size, shuffle=True)
-    val_loader = _make_loader(X_val, y_val, y_ord_val, cfg.batch_size, shuffle=False)
+    train_loader = _make_loader(x_train, y_train, y_ord_train, cfg.batch_size, shuffle=True)
+    val_loader = _make_loader(x_val, y_val, y_ord_val, cfg.batch_size, shuffle=False)
 
     best_val_loss = float("inf")
     best_state = None
@@ -187,8 +186,8 @@ def _final_metrics(model: SeverityMLP, loader: DataLoader, device) -> dict:
     }
 
 
-def predict_proba(model: SeverityMLP, X: np.ndarray) -> np.ndarray:
+def predict_proba(model: SeverityMLP, x: np.ndarray) -> np.ndarray:
     model.eval()
     with torch.no_grad():
-        logits, _ = model(torch.tensor(X, dtype=torch.float32))
+        logits, _ = model(torch.tensor(x, dtype=torch.float32))
         return torch.softmax(logits, dim=-1).numpy()

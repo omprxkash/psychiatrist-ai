@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 import mlflow
@@ -33,9 +34,9 @@ DEFAULT_PARAMS: dict[str, Any] = {
 
 
 def train(
-    X_train: np.ndarray,
+    x_train: np.ndarray,
     y_train: np.ndarray,
-    X_val: np.ndarray,
+    x_val: np.ndarray,
     y_val: np.ndarray,
     num_classes: int,
     params: dict | None = None,
@@ -50,26 +51,26 @@ def train(
 
         clf = XGBClassifier(**p)
         clf.fit(
-            X_train,
+            x_train,
             y_train,
-            eval_set=[(X_val, y_val)],
+            eval_set=[(x_val, y_val)],
             verbose=50,
         )
 
         if calibrate:
             clf = CalibratedClassifierCV(clf, cv="prefit", method="isotonic")
-            clf.fit(X_val, y_val)
+            clf.fit(x_val, y_val)
 
-        metrics = evaluate(clf, X_val, y_val, prefix="val")
+        metrics = evaluate(clf, x_val, y_val, prefix="val")
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(clf, artifact_path="xgboost-severity")
 
     return clf, metrics
 
 
-def evaluate(clf, X: np.ndarray, y: np.ndarray, prefix: str = "test") -> dict:
-    y_pred = clf.predict(X)
-    y_proba = clf.predict_proba(X)
+def evaluate(clf, x: np.ndarray, y: np.ndarray, prefix: str = "test") -> dict:
+    y_pred = clf.predict(x)
+    y_proba = clf.predict_proba(x)
 
     macro_f1 = f1_score(y, y_pred, average="macro")
     weighted_f1 = f1_score(y, y_pred, average="weighted")
@@ -78,10 +79,8 @@ def evaluate(clf, X: np.ndarray, y: np.ndarray, prefix: str = "test") -> dict:
     n_classes = y_proba.shape[1]
     roc_auc = float("nan")
     if n_classes == len(np.unique(y)):
-        try:
+        with contextlib.suppress(Exception):
             roc_auc = roc_auc_score(y, y_proba, multi_class="ovr", average="macro")
-        except Exception:
-            pass
 
     report = classification_report(y, y_pred, output_dict=True)
     metrics: dict[str, float] = {

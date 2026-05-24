@@ -43,8 +43,8 @@ CATEGORICAL_COLS = ["gender", "phq9_band"]
 
 def build_report(reference: pd.DataFrame, current: pd.DataFrame) -> str:
     try:
-        from evidently.report import Report
         from evidently.metric_preset import DataDriftPreset
+        from evidently.report import Report
     except ImportError:
         print("evidently not installed. Run: pip install evidently", file=sys.stderr)
         sys.exit(1)

@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 def main(last_n: int | None, verdict_filter: str | None, export: str | None) -> None:
-    from monitoring.audit_log import load_log, LOG_PATH
+    from monitoring.audit_log import LOG_PATH, load_log
 
     records = load_log(last_n)
     if not records:

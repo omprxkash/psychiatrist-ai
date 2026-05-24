@@ -17,8 +17,8 @@ import pytest
 from tests.safety.suicide_risk_cases import (
     CASES,
     SafetyCase,
-    escalation_cases,
     cases_by_category,
+    escalation_cases,
 )
 
 pytestmark = pytest.mark.safety

@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
 from pathlib import Path
 
 import torch
@@ -67,7 +68,6 @@ def _model_size_mb(model: torch.nn.Module) -> float:
 
 def load_quantized(model_dir: Path) -> tuple:
     """Load a quantized model from disk for inference."""
-    import io
     from transformers import AutoConfig
 
     config = AutoConfig.from_pretrained(str(model_dir))
@@ -83,16 +83,11 @@ def load_quantized(model_dir: Path) -> tuple:
 
 
 def main():
-    import io  # noqa: F401 — needed in _model_size_mb
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     quantize_model(args.model_dir, args.out)
-
-
-import io  # kept at module level for _model_size_mb
 
 
 if __name__ == "__main__":

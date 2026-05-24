@@ -8,8 +8,6 @@ continuous severity score.
 
 from __future__ import annotations
 
-import pickle
-from pathlib import Path
 from typing import Any
 
 from agents.state import AgentState
@@ -26,17 +24,24 @@ GAD7_ITEMS = [
 
 
 def _phq9_band(total: int) -> str:
-    if total <= 4:   return "none"
-    if total <= 9:   return "mild"
-    if total <= 14:  return "moderate"
-    if total <= 19:  return "moderately_severe"
+    if total <= 4:
+        return "none"
+    if total <= 9:
+        return "mild"
+    if total <= 14:
+        return "moderate"
+    if total <= 19:
+        return "moderately_severe"
     return "severe"
 
 
 def _gad7_band(total: int) -> str:
-    if total <= 4:   return "minimal"
-    if total <= 9:   return "mild"
-    if total <= 14:  return "moderate"
+    if total <= 4:
+        return "minimal"
+    if total <= 9:
+        return "mild"
+    if total <= 14:
+        return "moderate"
     return "severe"
 
 

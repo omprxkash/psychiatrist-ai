@@ -21,13 +21,11 @@ import os
 import pickle
 import time
 from pathlib import Path
-from typing import Iterator
 
 import faiss
 import numpy as np
 import requests
 from sentence_transformers import SentenceTransformer
-from tqdm import tqdm
 
 NCBI_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"

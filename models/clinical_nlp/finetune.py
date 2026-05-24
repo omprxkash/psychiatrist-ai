@@ -17,14 +17,12 @@ Memory footprint on laptop (no GPU):
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 
 import mlflow
 import numpy as np
 import torch
 from sklearn.metrics import (
-    classification_report,
     f1_score,
     precision_score,
     recall_score,

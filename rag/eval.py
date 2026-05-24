@@ -14,7 +14,6 @@ Requires:
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 EVAL_QUESTIONS = [
@@ -56,9 +55,9 @@ EVAL_QUESTIONS = [
 def run_eval(chain, index_dirs: dict[str, Path], n: int = 50):
     """Run RAGAS evaluation on a sample of questions."""
     try:
+        from datasets import Dataset
         from ragas import evaluate
         from ragas.metrics import answer_relevancy, context_precision, faithfulness
-        from datasets import Dataset
     except ImportError:
         print("ragas not installed. Run: pip install ragas datasets")
         return
@@ -92,8 +91,8 @@ def main():
     parser.add_argument("--n", type=int, default=50)
     args = parser.parse_args()
 
-    from rag.retriever import HybridRetriever
     from rag.chain import build_rag_chain
+    from rag.retriever import HybridRetriever
 
     index_dirs = {
         "dsm": args.index_dir / "dsm",

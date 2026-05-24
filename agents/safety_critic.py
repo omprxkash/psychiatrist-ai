@@ -32,7 +32,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 
 from agents.state import AgentState, Verdict
 
@@ -123,11 +123,7 @@ def _sentence_has_si_signal(sentence: str) -> bool:
     for frame in _CONDITIONAL_FRAMES:
         if re.search(frame, s, re.IGNORECASE):
             return False
-    # Check SI keywords.
-    for pattern in SI_KEYWORDS:
-        if re.search(pattern, s, re.IGNORECASE):
-            return True
-    return False
+    return any(re.search(pattern, s, re.IGNORECASE) for pattern in SI_KEYWORDS)
 
 
 def _check_deterministic(state: AgentState) -> bool:
@@ -139,10 +135,7 @@ def _check_deterministic(state: AgentState) -> bool:
     narrative = state["patient_input"].get("narrative", "")
     # Check sentence by sentence to avoid false positives from conditional frames.
     sentences = re.split(r"(?<=[.!?])\s+", narrative)
-    for sentence in sentences:
-        if _sentence_has_si_signal(sentence):
-            return True
-    return False
+    return any(_sentence_has_si_signal(sentence) for sentence in sentences)
 
 
 def _build_record_summary(state: AgentState) -> str:
@@ -171,7 +164,7 @@ class SafetyCriticAgent:
         self._llm = llm
 
     @classmethod
-    def from_ollama(cls, model: str = "llama3.2") -> "SafetyCriticAgent":
+    def from_ollama(cls, model: str = "llama3.2") -> SafetyCriticAgent:
         try:
             from langchain_community.llms import Ollama
             return cls(llm=Ollama(model=model))
@@ -280,8 +273,6 @@ def classify(text: str, llm=None) -> SafetyCriticResult:
 
     This is the entry point imported in tests/safety/test_safety_critic.py.
     """
-    from agents.state import AgentState
-
     minimal_state: AgentState = {
         "patient_input": {
             "phq1_anhedonia": 0, "phq2_low_mood": 0, "phq3_sleep": 0,

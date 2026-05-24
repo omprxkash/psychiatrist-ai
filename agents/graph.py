@@ -17,12 +17,12 @@ from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
 
-from agents.state import AgentState
-from agents.screening import ScreeningAgent
-from agents.risk import RiskAgent
-from agents.dsm_literature import DSMLiteratureAgent
 from agents.care_plan import CarePlanAgent
+from agents.dsm_literature import DSMLiteratureAgent
+from agents.risk import RiskAgent
 from agents.safety_critic import SafetyCriticAgent
+from agents.screening import ScreeningAgent
+from agents.state import AgentState
 
 
 def build_graph(
@@ -95,8 +95,9 @@ def build_graph_from_env(
     rag_chain = None
     try:
         from pathlib import Path
-        from rag.retriever import HybridRetriever
+
         from rag.chain import build_rag_chain
+        from rag.retriever import HybridRetriever
 
         index_dirs = {
             "dsm": Path(index_root) / "dsm",

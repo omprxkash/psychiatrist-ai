@@ -6,12 +6,9 @@ Keeps app.py readable by pulling display logic into focused helpers.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 
 
@@ -156,7 +153,7 @@ def phq9_item_contribution(patient_input: dict) -> tuple[list[str], list[float]]
     scores = [round((score / 3) * weight, 3) for _, score, weight in items]
 
     # Only top 6 by magnitude, descending
-    paired = sorted(zip(scores, names), reverse=True)[:6]
+    paired = sorted(zip(scores, names, strict=False), reverse=True)[:6]
     top_scores = [s for s, _ in paired]
     top_names  = [n for _, n in paired]
 

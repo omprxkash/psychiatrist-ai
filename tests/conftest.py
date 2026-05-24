@@ -8,7 +8,7 @@ import pytest
 @pytest.fixture(scope="session")
 def spark():
     """Provide a local Spark session for tests that need one.  Lazily imports pyspark."""
-    pyspark = pytest.importorskip("pyspark")
+    pytest.importorskip("pyspark")
     from pyspark.sql import SparkSession
 
     session = (

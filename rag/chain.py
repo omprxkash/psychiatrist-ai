@@ -14,9 +14,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
+from langchain_core.runnables import RunnableLambda
 
 from rag.retriever import HybridRetriever
 
@@ -61,7 +60,6 @@ def build_rag_chain(retriever: HybridRetriever, llm: Any) -> Any:
 
     def _retrieve_and_format(inputs: dict) -> dict:
         query = inputs["query"]
-        source_filter = inputs.get("source_filter")
         context, citations = retriever.retrieve_with_sources(query)
         if not context:
             return {
