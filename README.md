@@ -94,31 +94,6 @@ There's a 16-case regression suite covering overt ("I want to end my life") and 
 
 All screenshots are in the [`images/`](images/) folder. Here's what the app looks like end-to-end.
 
-**Patient intake — PHQ-9 and GAD-7 sliders**
-
-![PHQ-9 sliders](images/phq9_sliders.png)
-![GAD-7 sliders](images/gad7_sliders.png)
-
-**Demographics and clinical narrative**
-
-![Demographics and narrative](images/demographics_narrative.png)
-
-**Pipeline running — five agents in sequence**
-
-![Pipeline running](images/assessment_running.png)
-
-**Clinical results — escalate verdict with severity cards and feature contributions**
-
-![Clinical results](images/clinical_results_full.png)
-
-**Care plan suggestions**
-
-![Care plan](images/care_plan.png)
-
-**Literature tab**
-
-![Literature](images/literature.png)
-
 ---
 
 ## Stack
