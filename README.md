@@ -6,7 +6,7 @@ A portfolio project on agentic clinical decision support — fill in a PHQ-9 / G
 
 ![Psychiatrist UI](docs/images/hero.png)
 
-[![CI](https://github.com/omprxkash/data-scientist-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/omprxkash/data-scientist-mlops/actions/workflows/ci.yml)
+[![CI](https://github.com/omprxkash/psychiatrist-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/omprxkash/psychiatrist-ai/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB?style=flat&logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.33+-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-agent_framework-FF6B35?style=flat)
@@ -43,26 +43,13 @@ python data/generate.py --n 50000 --out data/processed
 streamlit run serving/app.py
 ```
 
-Open `http://localhost:8501`. For the full setup with Ollama and trained models, see [Running the full pipeline](#running-the-full-pipeline).
+For the full setup with Ollama and trained models, see [Running the full pipeline](#running-the-full-pipeline).
 
 ---
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td><img src="images/phq9_sliders.png" alt="PHQ-9 Depression Screening"/><br><sub><b>PHQ-9 Depression screening</b></sub></td>
-    <td><img src="images/gad7_sliders.png" alt="GAD-7 Anxiety Screening"/><br><sub><b>GAD-7 Anxiety screening</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="images/demographics_narrative.png" alt="Demographics and Clinical Narrative"/><br><sub><b>Demographics + clinical narrative</b></sub></td>
-    <td><img src="images/06_assessment_running.png" alt="Pipeline Running"/><br><sub><b>Five-agent pipeline running</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="images/clinical_results.png" alt="Clinical Results"/><br><sub><b>Clinical results — escalation verdict + severity</b></sub></td>
-    <td><img src="images/care_plan.png" alt="Care Plan Suggestions"/><br><sub><b>Care plan suggestions + score metrics</b></sub></td>
-  </tr>
-</table>
+See the [live project page](https://omprxkash.github.io/psychiatrist-ai/) for a full walkthrough with screenshots.
 
 ---
 
