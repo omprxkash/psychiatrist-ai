@@ -122,6 +122,6 @@ These were chosen deliberately — don't replace without a concrete reason:
 
 ## Safety contract
 
-Read [SAFETY.md](SAFETY.md) and [CLAUDE.md](CLAUDE.md) before touching `agents/safety_critic.py` or `tests/safety/`.
+Read [SAFETY.md](SAFETY.md) before touching `agents/safety_critic.py` or `tests/safety/`.
 
 The suicide-risk regression test set in [tests/safety/suicide_risk_cases.py](tests/safety/suicide_risk_cases.py) is a **durable contract**. New cases can be added; existing `expected_verdict="escalate"` cases must not be relaxed without the SAFETY.md review process (test-set update + SAFETY.md note + a second reviewer). Any PR that lowers recall must be rejected.
