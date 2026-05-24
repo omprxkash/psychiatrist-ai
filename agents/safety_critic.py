@@ -32,7 +32,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.state import AgentState, Verdict
 
@@ -86,19 +86,15 @@ patient's record.
 3. Identify inappropriate certainty — language that implies a diagnosis or prescription.
 4. Identify any language that contradicts a safety escalation requirement.
 
-Patient record summary:
-{record_summary}
-
-Generated care-plan summary:
-{care_plan_summary}
+The patient record and care plan will be provided in the next message.
 
 Respond with a JSON object:
-{{
+{
   "flags": ["<issue 1>", "<issue 2>"],
   "verdict_recommendation": "escalate" | "monitor" | "routine"
-}}
+}
 
-If no issues are found, return {{"flags": [], "verdict_recommendation": "routine"}}.
+If no issues are found, return {"flags": [], "verdict_recommendation": "routine"}.
 Respond ONLY with valid JSON. Do not add prose.
 """
 
@@ -222,12 +218,15 @@ class SafetyCriticAgent:
 
         record_summary = _build_record_summary(state)
         care_plan_summary = _build_care_plan_summary(state)
-        prompt = VERIFIER_SYSTEM.format(
-            record_summary=record_summary,
-            care_plan_summary=care_plan_summary,
+        user_content = (
+            f"Patient record summary:\n{record_summary}\n\n"
+            f"Generated care-plan summary:\n{care_plan_summary}"
         )
         try:
-            response = self._llm.invoke([SystemMessage(content=prompt)])
+            response = self._llm.invoke([
+                SystemMessage(content=VERIFIER_SYSTEM),
+                HumanMessage(content=user_content),
+            ])
             content = response.content if hasattr(response, "content") else str(response)
             content = content.strip()
             # Extract JSON from response (model may add prose despite instructions).
