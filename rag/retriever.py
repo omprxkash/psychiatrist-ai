@@ -14,7 +14,6 @@ by ~8 pp on RAGAS context-precision on the DSM evaluation set.
 from __future__ import annotations
 
 import pickle
-
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,7 +21,6 @@ import faiss
 import numpy as np
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder, SentenceTransformer
-
 
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"

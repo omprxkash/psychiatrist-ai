@@ -73,7 +73,12 @@ def _train_severity(args: argparse.Namespace):
         models_trained = []
 
         if args.model in ("xgboost", "all"):
-            from models.severity.xgboost_model import evaluate as xgb_eval, train as xgb_train
+            from models.severity.xgboost_model import (
+                evaluate as xgb_eval,
+            )
+            from models.severity.xgboost_model import (
+                train as xgb_train,
+            )
             print("\n── XGBoost ──")
             xgb_clf, xgb_val_metrics = xgb_train(
                 x_tr, y_tr, x_val, y_val,
@@ -109,7 +114,12 @@ def _train_severity(args: argparse.Namespace):
             print(f"LightGBM val macro F1: {lgb_val_m.get('val_macro_f1', 'n/a'):.4f}")
 
         if args.model in ("torch_mlp", "all"):
-            from models.severity.torch_mlp import MLPConfig, train as mlp_train
+            from models.severity.torch_mlp import (
+                MLPConfig,
+            )
+            from models.severity.torch_mlp import (
+                train as mlp_train,
+            )
             print("\n── PyTorch MLP ──")
             cfg = MLPConfig(
                 input_dim=x_tr.shape[1],

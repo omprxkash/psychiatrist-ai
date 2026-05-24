@@ -6,10 +6,12 @@ Keeps app.py readable by pulling display logic into focused helpers.
 
 from __future__ import annotations
 
+# isort: off
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # backend must be set before pyplot import
 import numpy as np
+# isort: on
 
 
 # ── Colour palette — Limitless design tokens (oklch) ──────────────────────────
