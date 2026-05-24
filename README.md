@@ -6,7 +6,7 @@ A portfolio project on agentic clinical decision support. Fill in a PHQ-9 / GAD-
 
 ![Psychiatrist UI](images/hero.png)
 
-[![CI](https://github.com/omprxkash/psychiatrist-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/omprxkash/psychiatrist-ai/actions/workflows/ci.yml)
+[![CI](https://github.com/omprxkash/data-scientist-langgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/omprxkash/data-scientist-langgraph/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB?style=flat&logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.33+-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-agent_framework-FF6B35?style=flat)
