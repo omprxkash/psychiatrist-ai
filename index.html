@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Psychiatrist — Agentic Clinical Decision Support</title>
+  <meta name="description" content="A portfolio project combining PHQ-9/GAD-7 screening, LangGraph multi-agent pipeline, MentalBERT SI detection, and a deterministic Safety Critic." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:    #0d9488;
+      --teal-lt: #ccfbf1;
+      --red:     #ef4444;
+      --amber:   #f59e0b;
+      --n50:     #f8fafc;
+      --n100:    #f1f5f9;
+      --n200:    #e2e8f0;
+      --n400:    #94a3b8;
+      --n600:    #475569;
+      --n800:    #1e293b;
+      --n900:    #0f172a;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: #fff;
+      color: var(--n800);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--n200);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .nav-brand { font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; color: var(--n900); text-decoration: none; }
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+    .nav-links a { font-size: .875rem; font-weight: 500; color: var(--n600); text-decoration: none; transition: color .15s; }
+    .nav-links a:hover { color: var(--teal); }
+    .nav-cta {
+      background: var(--n900); color: #fff !important;
+      padding: 7px 18px; border-radius: 8px;
+      font-size: .825rem !important; font-weight: 600 !important;
+    }
+    .nav-cta:hover { background: var(--teal) !important; color: #fff !important; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 5rem 2rem 3rem;
+      text-align: center;
+      background: linear-gradient(160deg, #f0fdfa 0%, #fff 60%);
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--teal-lt); color: var(--teal);
+      font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+      padding: 4px 14px; border-radius: 99px; margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800; letter-spacing: -.04em;
+      color: var(--n900); line-height: 1.15;
+      max-width: 720px; margin: 0 auto 1rem;
+    }
+    .hero h1 span { color: var(--teal); }
+    .hero p {
+      font-size: 1.1rem; color: var(--n600);
+      max-width: 600px; margin: 0 auto 2rem;
+    }
+    .hero-btns { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: 11px 24px; border-radius: 10px;
+      font-weight: 600; font-size: .9rem; text-decoration: none;
+      transition: all .15s;
+    }
+    .btn-primary { background: var(--n900); color: #fff; }
+    .btn-primary:hover { background: var(--teal); }
+    .btn-outline { background: #fff; color: var(--n800); border: 1.5px solid var(--n200); }
+    .btn-outline:hover { border-color: var(--n400); }
+
+    .hero-img {
+      margin: 3rem auto 0;
+      max-width: 1000px;
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.12), 0 0 0 1px var(--n200);
+      overflow: hidden;
+    }
+    .hero-img img { width: 100%; display: block; }
+
+    /* ── Section wrapper ── */
+    section { padding: 5rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: .75rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--teal); margin-bottom: .5rem;
+    }
+    .section-title {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800; letter-spacing: -.03em;
+      color: var(--n900); margin-bottom: 1rem;
+    }
+    .section-sub { font-size: 1rem; color: var(--n600); max-width: 580px; }
+
+    /* ── Pipeline ── */
+    .pipeline-bg { background: var(--n50); }
+    .pipeline-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1px; background: var(--n200);
+      border: 1px solid var(--n200); border-radius: 14px; overflow: hidden;
+      margin-top: 3rem;
+    }
+    .step {
+      background: #fff; padding: 1.75rem 1.5rem;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--n900); color: #fff;
+      font-size: .75rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step h3 { font-size: .95rem; font-weight: 700; color: var(--n900); }
+    .step p { font-size: .825rem; color: var(--n600); line-height: 1.5; }
+    .step-tag {
+      display: inline-block; margin-top: .25rem;
+      background: var(--n100); color: var(--n600);
+      font-size: .7rem; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+    }
+
+    /* ── Screenshots ── */
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
+    }
+    .shot {
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--n200);
+      box-shadow: 0 4px 16px rgba(0,0,0,.06);
+      transition: box-shadow .2s, transform .2s;
+    }
+    .shot:hover { box-shadow: 0 8px 32px rgba(0,0,0,.1); transform: translateY(-2px); }
+    .shot img { width: 100%; display: block; }
+    .shot-caption {
+      padding: .75rem 1rem;
+      font-size: .8rem; font-weight: 600; color: var(--n600);
+      border-top: 1px solid var(--n200); background: var(--n50);
+    }
+
+    /* ── Stack ── */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem; margin-top: 2.5rem;
+    }
+    .stack-card {
+      border: 1px solid var(--n200); border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      transition: border-color .15s;
+    }
+    .stack-card:hover { border-color: var(--teal); }
+    .stack-card h4 { font-size: .9rem; font-weight: 700; color: var(--n900); margin-bottom: .3rem; }
+    .stack-card p { font-size: .8rem; color: var(--n600); line-height: 1.5; }
+    .stack-pill {
+      display: inline-block; margin-top: .5rem;
+      background: var(--n100); color: var(--n600);
+      font-size: .7rem; font-weight: 600; padding: 2px 9px; border-radius: 5px;
+    }
+
+    /* ── Safety ── */
+    .safety-bg { background: #0f172a; color: #fff; }
+    .safety-bg .section-title { color: #fff; }
+    .safety-bg .section-sub { color: #94a3b8; }
+    .safety-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem; margin-top: 2.5rem;
+    }
+    .safety-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 1.5rem;
+    }
+    .safety-icon { font-size: 1.5rem; margin-bottom: .75rem; }
+    .safety-card h4 { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: .4rem; }
+    .safety-card p { font-size: .825rem; color: #94a3b8; line-height: 1.55; }
+
+    /* ── CTA ── */
+    .cta-bg { background: linear-gradient(135deg, #f0fdfa, #ecfdf5); text-align: center; }
+    .cta-bg .section-title { margin-bottom: .75rem; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--n900); color: var(--n400);
+      padding: 2rem; text-align: center;
+      font-size: .8rem;
+    }
+    footer a { color: var(--n400); }
+    footer a:hover { color: #fff; }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .screenshots-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a class="nav-brand" href="#">🧠 Psychiatrist</a>
+  <ul class="nav-links">
+    <li><a href="#pipeline">How it works</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
+    <li><a href="#stack">Stack</a></li>
+    <li><a href="#safety">Safety</a></li>
+    <li><a href="https://github.com/omprxkash/data-scientist-mlops" class="nav-cta">GitHub →</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">Portfolio Project · Data Science</div>
+  <h1>Agentic <span>clinical decision support</span> built end-to-end</h1>
+  <p>PHQ-9 / GAD-7 screening · LangGraph multi-agent pipeline · MentalBERT SI detection · deterministic Safety Critic. Runs entirely on CPU, no API keys needed.</p>
+  <div class="hero-btns">
+    <a href="https://github.com/omprxkash/data-scientist-mlops" class="btn btn-primary">View on GitHub →</a>
+    <a href="#screenshots" class="btn btn-outline">See screenshots</a>
+  </div>
+  <div class="hero-img">
+    <img src="images/hero.png" alt="Psychiatrist clinical UI — patient intake form" />
+  </div>
+</div>
+
+<!-- Pipeline -->
+<section class="pipeline-bg" id="pipeline">
+  <div class="container">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Five agents, one linear pipeline</h2>
+    <p class="section-sub">No branching, no retries. Each agent reads from a shared state object, does its job, and passes the baton. The Safety Critic always runs last.</p>
+
+    <div class="pipeline-steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Screening</h3>
+        <p>Validates questionnaire inputs, computes PHQ-9 and GAD-7 totals, flags item 9 for suicidal ideation.</p>
+        <span class="step-tag">Rule-based</span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Risk Assessment</h3>
+        <p>XGBoost severity classifier + MentalBERT (int8) suicidal ideation probability from the clinical note.</p>
+        <span class="step-tag">XGBoost · MentalBERT</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>DSM + Literature</h3>
+        <p>Hybrid FAISS + BM25 retrieval over DSM-5 summaries and PubMed abstracts for grounded citations.</p>
+        <span class="step-tag">RAG · FAISS · BM25</span>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Care Plan</h3>
+        <p>Llama 3.2 via Ollama generates actionable suggestions. Falls back to templated recommendations if offline.</p>
+        <span class="step-tag">Llama 3.2 · Ollama</span>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <h3>Safety Critic</h3>
+        <p>Deterministic SI keyword rules fire first. LLM verifier reviews the care plan second. Escalation cannot be overridden.</p>
+        <span class="step-tag">Deterministic + LLM</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Screenshots -->
+<section id="screenshots">
+  <div class="container">
+    <div class="section-label">In action</div>
+    <h2 class="section-title">What it looks like</h2>
+    <p class="section-sub">From intake to verdict — a complete walkthrough of the pipeline running on a sample case.</p>
+
+    <div class="screenshots-grid">
+      <div class="shot">
+        <img src="images/phq9_sliders.png" alt="PHQ-9 screening" />
+        <div class="shot-caption">PHQ-9 Depression screening — 9-item slider form</div>
+      </div>
+      <div class="shot">
+        <img src="images/gad7_sliders.png" alt="GAD-7 screening" />
+        <div class="shot-caption">GAD-7 Anxiety screening — 7-item slider form</div>
+      </div>
+      <div class="shot">
+        <img src="images/demographics_narrative.png" alt="Demographics and clinical narrative" />
+        <div class="shot-caption">Demographics + clinical narrative input</div>
+      </div>
+      <div class="shot">
+        <img src="images/assessment_running.png" alt="Pipeline running" />
+        <div class="shot-caption">Five-agent LangGraph pipeline running</div>
+      </div>
+      <div class="shot">
+        <img src="images/clinical_results.png" alt="Clinical results" />
+        <div class="shot-caption">Clinical results — escalation verdict + severity cards</div>
+      </div>
+      <div class="shot">
+        <img src="images/care_plan.png" alt="Care plan suggestions" />
+        <div class="shot-caption">Care plan suggestions + score metrics</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stack -->
+<section class="pipeline-bg" id="stack">
+  <div class="container">
+    <div class="section-label">Technical stack</div>
+    <h2 class="section-title">Built with tools that matter in the field</h2>
+    <p class="section-sub">Every choice has a reason — no buzzword-driven decisions.</p>
+
+    <div class="stack-grid">
+      <div class="stack-card">
+        <h4>LangGraph</h4>
+        <p>Defines the agent pipeline as an explicit DAG. Each node is a Python class you can test in isolation.</p>
+        <span class="stack-pill">Agent orchestration</span>
+      </div>
+      <div class="stack-card">
+        <h4>MentalBERT (int8)</h4>
+        <p>Pre-trained on mental health text, not general-purpose BERT. Meaningfully better at suicidal ideation detection.</p>
+        <span class="stack-pill">Clinical NLP</span>
+      </div>
+      <div class="stack-card">
+        <h4>XGBoost + PyTorch MLP</h4>
+        <p>XGBoost genuinely outperforms deep models on tabular PHQ-9 / GAD-7 data. The MLP is a comparison baseline.</p>
+        <span class="stack-pill">Severity classification</span>
+      </div>
+      <div class="stack-card">
+        <h4>FAISS + BM25 hybrid</h4>
+        <p>Semantic search alone misses exact clinical terminology. Keyword search alone misses meaning. Both together works.</p>
+        <span class="stack-pill">RAG retrieval</span>
+      </div>
+      <div class="stack-card">
+        <h4>Ollama + Llama 3.2</h4>
+        <p>Fully local LLM inference. No API keys, no per-call cost, no data leaving the machine.</p>
+        <span class="stack-pill">LLM · Care plan</span>
+      </div>
+      <div class="stack-card">
+        <h4>MLflow + Evidently</h4>
+        <p>Experiment tracking for model training, drift monitoring to flag when the input distribution shifts in production.</p>
+        <span class="stack-pill">MLOps</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Safety -->
+<section class="safety-bg" id="safety">
+  <div class="container">
+    <div class="section-label" style="color:#5eead4;">Safety design</div>
+    <h2 class="section-title">Safety isn't optional</h2>
+    <p class="section-sub">The hardest part of this project wasn't the ML — it was making sure no combination of model failures, Ollama downtime, or LLM hallucinations could suppress a genuine escalation.</p>
+
+    <div class="safety-cards">
+      <div class="safety-card">
+        <div class="safety-icon">🛡️</div>
+        <h4>Deterministic rules fire first</h4>
+        <p>Layer 1 of the Safety Critic scans the narrative sentence by sentence for suicidal ideation keywords before any LLM touches the text. If it fires, the verdict is <code style="color:#5eead4;">escalate</code> — full stop.</p>
+      </div>
+      <div class="safety-card">
+        <div class="safety-icon">🔒</div>
+        <h4>LLMs cannot override escalations</h4>
+        <p>The LLM verifier in Layer 2 can upgrade a verdict, never downgrade one. An escalation set by Layer 1 or PHQ-9 item 9 cannot be talked away by the care-plan agent or anything downstream.</p>
+      </div>
+      <div class="safety-card">
+        <div class="safety-icon">✅</div>
+        <h4>16-case regression suite blocks merges</h4>
+        <p>A hand-curated suite covering overt and subtle SI patterns runs in CI on every push. It needs 100% recall. A model change that lowers recall on this suite does not merge.</p>
+      </div>
+      <div class="safety-card">
+        <div class="safety-icon">⚡</div>
+        <h4>Graceful fallbacks at every step</h4>
+        <p>No Ollama? Templated care plans. No MentalBERT checkpoint? Regex keyword fallback. No XGBoost model? Rules-based severity banding. The safety layer always runs regardless.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-bg">
+  <div class="container">
+    <div class="section-label">Open source · MIT License</div>
+    <h2 class="section-title">Everything is on GitHub</h2>
+    <p class="section-sub" style="margin: 0 auto 2rem;">No pre-trained model checkpoints required to run. Install, generate synthetic data, and start the UI in three commands.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/omprxkash/data-scientist-mlops" class="btn btn-primary">View source on GitHub →</a>
+      <a href="https://github.com/omprxkash/data-scientist-mlops/blob/main/ARCHITECTURE.md" class="btn btn-outline">Read the architecture</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>Built by <a href="https://github.com/omprxkash">omprxkash</a> · MIT License · <a href="https://github.com/omprxkash/data-scientist-mlops">GitHub</a></p>
+</footer>
+
+</body>
+</html>

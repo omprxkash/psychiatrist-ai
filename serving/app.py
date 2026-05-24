@@ -179,8 +179,6 @@ with st.sidebar:
     st.markdown("""
 A portfolio project on agentic clinical decision support. Combines a PHQ-9 / GAD-7
 screening model, a LangGraph multi-agent pipeline, and a deterministic Safety-Critic.
-
-**Not a medical device.** Results are for demonstration only.
 """)
 
     st.markdown("""
@@ -277,25 +275,26 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="disclaimer-box">
-  <strong>Portfolio demonstration only.</strong> Not clinically validated. Do not use for real
-  clinical decisions. If you or someone you know is in crisis, call a helpline &mdash; numbers in
-  the sidebar.
-</div>
-""", unsafe_allow_html=True)
-
 tab_intake, tab_results, tab_literature = st.tabs(["📋 Patient intake", "📊 Clinical results", "📚 Literature"])
 
 # ── Tab 1: Intake ──────────────────────────────────────────────────────────────
 
 with tab_intake:
     with st.form("intake_form", clear_on_submit=False):
-        st.markdown("#### Over the last **2 weeks**, how often have you been bothered by the following?")
-        st.caption("0 = Not at all &nbsp; 1 = Several days &nbsp; 2 = More than half the days &nbsp; 3 = Nearly every day")
+        st.markdown(
+            "<h4 style='color:#1a1a1a; font-weight:600; letter-spacing:-0.03em;'>"
+            "Over the last <strong>2 weeks</strong>, how often have you been bothered by the following?</h4>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<p style='font-size:0.85rem; color:#505050; margin:-8px 0 12px;'>"
+            "0 = Not at all &nbsp;·&nbsp; 1 = Several days &nbsp;·&nbsp; "
+            "2 = More than half the days &nbsp;·&nbsp; 3 = Nearly every day</p>",
+            unsafe_allow_html=True,
+        )
         st.markdown("---")
 
-        st.markdown("##### PHQ-9 — Depression screening")
+        st.markdown("<h5 style='color:#1a1a1a; font-weight:600;'>PHQ-9 — Depression screening</h5>", unsafe_allow_html=True)
         for key, question in PHQ9_QUESTIONS:
             # Q9 gets a visible warning label
             label = question if key != "phq9_suicidal_ideation" else f"⚠ {question}"
@@ -309,7 +308,7 @@ with tab_intake:
             )
 
         st.markdown("---")
-        st.markdown("##### GAD-7 — Anxiety screening")
+        st.markdown("<h5 style='color:#1a1a1a; font-weight:600;'>GAD-7 — Anxiety screening</h5>", unsafe_allow_html=True)
         for key, question in GAD7_QUESTIONS:
             st.session_state[key] = st.slider(
                 label=question,
@@ -321,7 +320,7 @@ with tab_intake:
             )
 
         st.markdown("---")
-        st.markdown("##### Demographics")
+        st.markdown("<h5 style='color:#1a1a1a; font-weight:600;'>Demographics</h5>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state["age"] = st.number_input(
@@ -345,8 +344,8 @@ with tab_intake:
             )
 
         st.markdown("---")
-        st.markdown("##### Clinical narrative")
-        st.caption("Brief description of presenting complaint, current functioning, or session notes.")
+        st.markdown("<h5 style='color:#1a1a1a; font-weight:600;'>Clinical narrative</h5>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size:0.83rem; color:#505050; margin:-6px 0 8px;'>Brief description of presenting complaint, current functioning, or session notes.</p>", unsafe_allow_html=True)
         st.session_state["narrative"] = st.text_area(
             label="Narrative",
             value=st.session_state["narrative"],
@@ -535,9 +534,11 @@ with tab_literature:
         st.info("Submit an assessment to retrieve relevant literature.")
     else:
         citations = result.get("citations") or []
-        if not citations:
-            st.info("No citations retrieved — RAG index not built yet. Run `make rag-index` to populate it.")
-        else:
+        dsm_context = result.get("dsm_context", "")
+        pubmed_context = result.get("pubmed_context", "")
+        dsm_differential = result.get("dsm_differential") or []
+
+        if citations:
             st.markdown(f"#### {len(citations)} citations retrieved")
             for i, c in enumerate(citations, 1):
                 score = c.get("score")
@@ -551,9 +552,32 @@ with tab_literature:
                     if score is not None:
                         st.caption(f"Relevance score: {score:.3f}")
                     st.caption(f"Source: {c.get('source', 'N/A')}")
+        else:
+            st.markdown("""
+<div style="background:oklch(97% 0 0); border:1px solid oklch(92.2% 0 0); border-radius:0.75rem;
+            padding:14px 18px; font-size:0.85rem; color:oklch(37.1% 0 0); margin-bottom:16px;">
+  <strong>RAG index not built.</strong> Run <code>make rag-index</code> to enable PubMed and DSM-5
+  citation retrieval. The DSM context below is generated from heuristic fallback.
+</div>
+""", unsafe_allow_html=True)
 
-        # Show DSM context if available (from rag agent)
-        dsm_context = result.get("dsm_context", "")
+        if dsm_differential:
+            st.markdown("#### DSM-5 differential signals")
+            for item in dsm_differential:
+                disorder = item.get("disorder", "Unknown")
+                confidence = item.get("confidence", "")
+                rationale = item.get("rationale", "")
+                with st.expander(f"{disorder}" + (f"  —  {confidence}" if confidence else ""), expanded=True):
+                    if rationale:
+                        st.markdown(rationale)
+
         if dsm_context and dsm_context not in ("", "RAG chain not available."):
-            with st.expander("DSM-5 context retrieved by RAG agent"):
-                st.markdown(dsm_context)
+            st.markdown("#### DSM-5 clinical context")
+            st.markdown(dsm_context)
+
+        if pubmed_context and pubmed_context not in ("", "RAG chain not available."):
+            st.markdown("#### PubMed context")
+            st.markdown(pubmed_context)
+
+        if not citations and not dsm_context and not pubmed_context and not dsm_differential:
+            st.info("No literature context was retrieved for this assessment.")

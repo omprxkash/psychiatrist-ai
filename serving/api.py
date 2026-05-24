@@ -18,9 +18,10 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # ── Pydantic models ────────────────────────────────────────────────────────────
 
@@ -128,15 +129,35 @@ app.add_middleware(
 )
 
 
+class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(_SecurityHeadersMiddleware)
+
+
 # ── Simple in-memory rate limiter ─────────────────────────────────────────────
 
 RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "10"))
 _rate_store: dict[str, list[float]] = defaultdict(list)
+_RATE_STORE_MAX_IPS = 10_000
 
 
 def _check_rate_limit(ip: str):
     now = time.time()
     window = 60.0
+
+    # Evict stale IPs when the store grows too large to prevent unbounded memory growth.
+    if len(_rate_store) > _RATE_STORE_MAX_IPS:
+        stale = [k for k, ts in _rate_store.items() if not any(now - t < window for t in ts)]
+        for k in stale:
+            del _rate_store[k]
+
     requests = [t for t in _rate_store[ip] if now - t < window]
     if len(requests) >= RATE_LIMIT_RPM:
         raise HTTPException(
@@ -213,7 +234,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
     try:
         final_state = _graph.invoke(initial_state)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Graph error: {e}") from e
+        raise HTTPException(status_code=500, detail="Inference error. Check server logs.") from e
     elapsed_ms = (time.perf_counter() - t0) * 1000
 
     citations = [Citation(**c) for c in (final_state.get("citations") or [])]
