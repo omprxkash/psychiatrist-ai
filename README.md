@@ -69,8 +69,6 @@ flowchart TD
     safety --> verdict([Verdict\nroutine · monitor · escalate])
 ```
 
-![Agent pipeline](images/agent_pipeline.png)
-
 ### The five agents
 
 **Screening** validates the questionnaire scores, computes PHQ-9 and GAD-7 totals, and immediately flags item 9 (suicidal ideation) if it's non-zero. That flag travels through the entire pipeline and reaches the Safety Critic regardless of what any other agent says.

@@ -12,6 +12,8 @@ A linear LangGraph DAG with five nodes sharing one `AgentState` TypedDict:
 START → screening → risk → dsm_literature → care_plan → safety_critic → END
 ```
 
+![Agent pipeline](images/agent_pipeline.png)
+
 There are **no conditional edges**. Every node runs on every request. The Safety-Critic always runs last and its verdict (`escalate` / `monitor` / `routine`) is the single output the FastAPI layer routes on.
 
 State schema lives in [agents/state.py](agents/state.py). LangGraph merges each node's returned dict into the running state — agents read from state, return a partial dict of what they've changed.
