@@ -15,7 +15,7 @@ A portfolio project on agentic clinical decision support. Fill in a PHQ-9 / GAD-
 ![Safety tests](https://img.shields.io/badge/safety_tests-16%2F16_passing-brightgreen?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
 
-### [Live Site](https://omprxkash.github.io/psychiatrist-ai/) · [Architecture](ARCHITECTURE.md) · [Safety Contract](SAFETY.md)
+**[Architecture](ARCHITECTURE.md) · [Safety Contract](SAFETY.md)**
 
 </div>
 
@@ -42,8 +42,6 @@ pip install -e ".[dev]"
 python data/generate.py --n 50000 --out data/processed
 streamlit run serving/app.py
 ```
-
-Or check out the **[live project page](https://omprxkash.github.io/psychiatrist-ai/)** for screenshots and a full walkthrough.
 
 For the complete setup with Ollama and trained models, see [Running the full pipeline](#running-the-full-pipeline).
 
