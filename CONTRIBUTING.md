@@ -1,6 +1,6 @@
 # Contributing
 
-This is a personal portfolio project, but issues and PRs are welcome.
+This is a personal project, but issues and PRs are welcome.
 
 ## Setup
 
