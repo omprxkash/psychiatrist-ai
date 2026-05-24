@@ -2,7 +2,8 @@
 
 # Psychiatrist
 
-A mental-health triage assistant that takes a PHQ-9 / GAD-7 screening form and a short clinical note, then returns a severity label, a safety verdict, and a suggested care plan — all running locally on a laptop.
+Fill in a depression/anxiety screening form and write a short clinical note.
+Get back a severity label, a safety verdict, and a suggested care plan.
 
 ![Psychiatrist clinical UI](docs/images/hero.png)
 
@@ -21,19 +22,19 @@ A mental-health triage assistant that takes a PHQ-9 / GAD-7 screening form and a
 
 ## Why I built this
 
-I wanted to actually work with agentic AI, not just read about it — something where agents have to coordinate around a real constraint, not just chain together LLM calls.
+I got tired of reading about agentic AI and wanted to actually build something with it — something where the agents have a real reason to exist, not just a chain of LLM calls dressed up as a pipeline.
 
-Mental health triage turned out to be a good fit. The clinical structure is well-defined (PHQ-9, GAD-7, DSM-5), the domain is text-heavy so everything runs on a CPU laptop, and there's a concrete safety constraint: a patient flagged for suicidal ideation must be escalated, no exceptions. That constraint forced me to think about failure modes properly.
+Mental health triage clicked for a few reasons. The clinical structure is already well-defined (PHQ-9 and GAD-7 are standard questionnaires used in actual clinics, DSM-5 criteria are public knowledge). The domain is text-heavy, so it runs fine on CPU. And there's one constraint that can't be fudged: if someone mentions suicidal ideation, the system has to escalate — full stop, no negotiation with a language model.
 
-What happens when the language model is offline? What happens when the model hasn't been trained yet? Can a hallucinating care-plan agent override the safety layer? The answer to that last one is no — deterministic keyword rules fire before the LLM ever sees the output, and nothing downstream can reverse them.
+That constraint turned out to be the most interesting part to build. What if Ollama is offline? What if the XGBoost model hasn't been trained yet? Can a hallucinating care-plan agent talk the safety layer into a quieter verdict? I spent more time thinking through those failure modes than any other part of the project, and the answers — deterministic rules that fire before any LLM sees the text, fallbacks at every step, a regression suite that blocks merges — ended up shaping the whole design.
 
-I also wanted one project that covers the full stack: classical ML, clinical NLP, retrieval-augmented generation, agent orchestration, and MLOps — in a way that actually fits together, rather than five separate toy demos.
+The other thing I wanted was one project that touches everything end-to-end: classical ML, clinical NLP, RAG, agent orchestration, and MLOps. Not five disconnected notebooks — one thing that actually holds together.
 
 ---
 
-## Try it in three commands
+## Quickstart
 
-No GPU, no Ollama, no trained models required for the quickstart. Everything falls back gracefully.
+No GPU needed. No Ollama. No pre-trained models. Everything degrades gracefully to rules and templates.
 
 ```bash
 pip install -e ".[dev]"
@@ -41,13 +42,13 @@ python data/generate.py --n 50000 --out data/processed
 streamlit run serving/app.py --server.port 8501
 ```
 
-Open `http://localhost:8501`. See [Running the full pipeline](#running-the-full-pipeline) if you want Ollama + trained models.
+Open `http://localhost:8501` and you're in. For the full setup with Ollama and trained models, see [Running the full pipeline](#running-the-full-pipeline) at the bottom.
 
 ---
 
-## How the pipeline works
+## How it works
 
-Every request goes through five agents in sequence. There are no branches — each agent runs regardless of what the previous one found, and they share a single state object that gets filled in as it moves through the graph.
+Five agents run in a fixed sequence on every request. No branching, no retries — each one reads from a shared state object, does its job, and passes the baton. The state fills up as it moves through, so by the time the Safety Critic runs it has everything the previous agents produced.
 
 ```mermaid
 flowchart TD
@@ -79,86 +80,86 @@ flowchart TD
     care -.-> llm
 ```
 
-### What each agent does
+### The five agents
 
-**Screening** — validates that PHQ-9 and GAD-7 item scores are in range (0–3), computes totals, and flags whether PHQ-9 item 9 (suicidal ideation) is non-zero. That flag feeds directly into the Safety Critic's deterministic layer.
+**Screening** is the simplest one — it validates that all the questionnaire scores are in the right range (0–3 per item), adds up the totals, and checks whether PHQ-9 item 9 is non-zero. That last item asks specifically about suicidal ideation, and if it's anything above zero, a flag gets set that the Safety Critic picks up regardless of what else happens.
 
-**Risk Assessment** — runs the XGBoost severity classifier on the questionnaire scores to get a severity band (none / mild / moderate / severe). Then runs MentalBERT — a BERT model pre-trained on mental health text, quantized for CPU — over the clinical narrative to produce a suicidal ideation probability. Falls back to regex keyword matching if MentalBERT isn't loaded.
+**Risk Assessment** runs two things. First, an XGBoost classifier on the questionnaire scores to predict severity band: none, mild, moderate, or severe. Second, MentalBERT — a BERT model pre-trained specifically on mental health text, compressed to run on CPU — reads the clinical note and produces a suicidal ideation probability. If MentalBERT isn't loaded, it falls back to regex keyword matching. Not ideal, but it doesn't silently return nothing.
 
-**DSM + Literature** — searches two local indexes: paraphrased DSM-5 criteria summaries and PubMed psychiatry abstracts. Uses FAISS for dense semantic search and BM25 for keyword matching, then merges and re-ranks the results with a cross-encoder. The retrieved passages are what ground the care plan suggestions in clinical literature.
+**DSM + Literature** searches two local indexes — paraphrased DSM-5 criteria summaries and PubMed psychiatry abstracts — using a combination of FAISS (semantic) and BM25 (keyword), then merges and re-ranks the results. This is what gives the care plan something to cite rather than generating suggestions from scratch.
 
-**Care Plan** — uses Llama 3.2 via Ollama to generate suggestions from the severity band, detected symptoms, and retrieved passages. If Ollama isn't running, it falls back to templated recommendations based on the severity band. Either way something useful comes out.
+**Care Plan** takes the severity band, the detected symptoms, and the retrieved passages, and asks Llama 3.2 (via Ollama) to turn that into actionable suggestions. If Ollama isn't running, it uses templated recommendations keyed to severity band. Either way you get something out, not an error.
 
-**Safety Critic** — always runs last, always runs both layers:
+**Safety Critic** is the one I spent the most time on. It always runs last and it runs two layers, in order:
 
-- *Layer 1 (deterministic):* checks for suicidal ideation keywords sentence-by-sentence, excluding reported speech patterns like "the patient said they were not suicidal". If this fires, the verdict is `escalate` and the LLM layer is skipped.
-- *Layer 2 (LLM):* if Layer 1 didn't fire, the LLM checks the care plan for hallucinated symptoms, unsupported claims, and overconfident phrasing. The LLM can upgrade a `routine` to `monitor`, but it cannot downgrade an `escalate`. For moderate or above PHQ-9 bands, the minimum verdict is `monitor` regardless.
+- *Deterministic first:* checks the narrative sentence by sentence for suicidal ideation keywords, with exclusions for reported speech patterns ("the patient denied any ideation"). If this fires, the verdict is `escalate`, Layer 2 is skipped, and nothing downstream can change it.
+- *LLM second:* if Layer 1 didn't fire, the LLM reviews the care plan for hallucinated symptoms, overconfident claims, and anything it shouldn't be asserting. It can upgrade a `routine` to `monitor`, but it can't downgrade an `escalate`. For moderate or above severity, the floor is `monitor`.
 
-A 16-case regression suite covers both obvious and subtle suicidal ideation patterns. It must pass at 100% recall on every push.
+There's a 16-case regression suite covering both obvious suicidal ideation ("I want to end my life") and subtle patterns ("I've been thinking there's no point anymore"). It runs on every push and has to hit 100% recall. That suite is what I actually trust — not the LLM.
 
 ---
 
-## Tech stack
+## What's under the hood
 
-| Layer | Choice | Why |
+| Layer | What I used | Why I chose it |
 |---|---|---|
-| Agent orchestration | LangGraph | Explicit graph — each node is a class you can test in isolation |
-| LLM | Llama-3.2-3B via Ollama | Fully local, no API keys, works offline |
-| NLP / SI detection | MentalBERT int8 | Domain-pre-trained on mental health text, runs on CPU in reasonable time |
-| Severity model | XGBoost + PyTorch MLP | XGBoost wins on tabular PHQ-9/GAD-7 scores; MLP is the neural baseline |
-| Retrieval | FAISS + BM25 hybrid | Dense semantic search + keyword matching, cross-encoder re-rank on the merged set |
-| UI | Streamlit | Custom CSS design tokens — less generic than default Streamlit |
-| API | FastAPI | Pydantic validates item ranges (0–3); per-IP rate limiting |
-| MLOps | MLflow + Evidently | Experiment tracking + drift detection; structured for auto-retrain on drift signal |
-| Data | Synthetic pandas generator + PySpark ETL | No real patient data; PHQ-9/GAD-7 distributions calibrated to published prevalence tables |
+| Agent orchestration | LangGraph | Lets you define the pipeline as an explicit graph — each node is a Python class you can test on its own |
+| LLM | Llama-3.2-3B via Ollama | Fully local, no API keys, no cost per call |
+| NLP / SI detection | MentalBERT int8 | Pre-trained on mental health text, not general-purpose BERT. Actually better for this domain. |
+| Severity model | XGBoost + PyTorch MLP | XGBoost is genuinely better on tabular questionnaire data. MLP is there as a comparison baseline. |
+| Retrieval | FAISS + BM25 hybrid | Semantic search alone misses exact terminology; BM25 alone misses meaning. Both together works better. |
+| UI | Streamlit | Fast to build, and with custom CSS it doesn't look like every other Streamlit app |
+| API | FastAPI | Pydantic validates item ranges; per-IP rate limiting keeps it from being hammered |
+| MLOps | MLflow + Evidently | Experiment tracking + drift monitoring; wired to flag when the input distribution shifts |
+| Training data | Synthetic PHQ-9/GAD-7 | No real patient data anywhere in this repo |
 
 ---
 
-## What's in the repo
+## What's in here
 
 | Path | What it is |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Full technical walkthrough — per-agent design, Safety Critic internals, retriever details |
-| [agents/](agents/) | LangGraph DAG definition and all five agent classes |
-| [models/](models/) | XGBoost + MLP severity training, MentalBERT fine-tuning and quantization |
-| [rag/](rag/) | Hybrid FAISS + BM25 retriever, DSM and PubMed ingestion scripts |
-| [serving/](serving/) | Streamlit UI (`app.py`) and FastAPI service (`api.py`) |
-| [spark_jobs/](spark_jobs/) | PySpark ETL for synthetic data and Reddit cohort |
-| [monitoring/](monitoring/) | Evidently drift reports and per-request safety audit log |
-| [tests/safety/](tests/safety/) | 16-case suicidal ideation suite — 100% recall is the release gate |
-| [data/](data/) | Synthetic PHQ-9/GAD-7 generator |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Goes deeper — per-agent design, Safety Critic internals, retriever implementation |
+| [agents/](agents/) | LangGraph DAG and all five agent classes |
+| [models/](models/) | XGBoost + MLP training, MentalBERT fine-tuning and quantization |
+| [rag/](rag/) | FAISS + BM25 retriever, DSM and PubMed ingestion |
+| [serving/](serving/) | Streamlit UI and FastAPI service |
+| [spark_jobs/](spark_jobs/) | PySpark ETL for synthetic data generation |
+| [monitoring/](monitoring/) | Evidently drift reports and a per-request safety audit log |
+| [tests/safety/](tests/safety/) | The 16-case suicidal ideation suite — 100% recall is the release gate |
+| [data/](data/) | Synthetic data generator |
 
 ---
 
-## Running tests
+## Tests
 
 ```bash
-pytest tests/safety/ -v -m safety   # safety regression — must be 16/16
-pytest tests/ -v --cov=agents       # full suite
-ruff check . && mypy agents models  # lint + types
+pytest tests/safety/ -v -m safety   # the suite that matters most — needs to be 16/16
+pytest tests/ -v --cov=agents       # full test run
+ruff check . && mypy agents models  # lint and type check
 ```
 
-The safety suite runs in CI on every push without Ollama or trained models — agents fall back to rules automatically.
+The safety suite runs in CI without Ollama or any trained checkpoints — the agents fall back to rules automatically, which is the whole point.
 
 ---
 
 <details>
-<summary>Running the full pipeline (Ollama + trained models)</summary>
+<summary>Running the full pipeline (with Ollama and trained models)</summary>
 
 ```bash
 ollama pull llama3.2
 
-# Train severity models
+# Train the severity models
 python -m models.train --task severity --model xgboost
 python -m models.train --task clinical_nlp --model mentalbert
 
-# Build RAG indexes
+# Build the RAG indexes
 python -m rag.ingest_dsm_summaries --out rag/indexes/dsm
 ```
 
-`make train` wraps these up. MentalBERT fine-tuning takes a few hours on CPU — use `--max-train-samples 5000` for a quick dev run.
+`make train` wraps all of this. MentalBERT fine-tuning takes a few hours on CPU — add `--max-train-samples 5000` if you just want to verify it runs.
 
-CLI shortcuts (after `pip install -e "."`):
+After `pip install -e "."`, there's also a CLI:
 
 ```bash
 psychiatrist serve    # Streamlit on :8501
@@ -170,27 +171,27 @@ psychiatrist data     # generate synthetic records
 </details>
 
 <details>
-<summary>Limitations worth knowing</summary>
+<summary>Honest caveats</summary>
 
-**Synthetic data only.** PHQ-9 / GAD-7 distributions are calibrated against published prevalence tables (Kroenke et al. 2001; Manea et al. 2012), but there is no real patient data in this repo.
+**It's trained on synthetic data.** The PHQ-9 and GAD-7 score distributions are calibrated against published prevalence tables (Kroenke et al. 2001, Manea et al. 2012), but there's no real patient data here. The outputs reflect what a model trained on plausible synthetic records produces — which isn't the same as clinical validation.
 
-**Not clinically validated.** Everything this system outputs should be read as "what a model trained on synthetic data produces" — not as a clinical recommendation.
+**Don't use this for actual clinical decisions.** It's a portfolio project demonstrating how these components fit together, not a medical tool.
 
-**Fallbacks are real.** When Ollama, MentalBERT, or the XGBoost checkpoint are unavailable, the system falls back to keywords and rule-based scoring. The Safety Critic's deterministic rules always fire regardless of what else is available.
+**The fallbacks matter.** Without Ollama, without MentalBERT, without the trained XGBoost checkpoint — the system still runs. The Safety Critic's deterministic rules still fire. It's worse, but it's not broken.
 
-**No PII anywhere.** The audit log stores feature vectors and model outputs only.
+**No patient data anywhere.** The audit log stores feature vectors and model predictions only.
 
 </details>
 
 <details>
-<summary>Roadmap</summary>
+<summary>What's still left to build</summary>
 
-| Component | Status |
+| Thing | Where it's at |
 |---|---|
-| Model training | Run `make train` — XGBoost + MentalBERT checkpoints not included in repo |
-| RAG indexes | Run `make rag-index` — FAISS + BM25 indexes built locally |
-| Docker | Scaffolded — Dockerfile + compose in progress |
-| Deployment | Evaluating Hugging Face Spaces and Render |
+| Model checkpoints | Not in the repo — run `make train` to produce them locally |
+| RAG indexes | Same — run `make rag-index` |
+| Docker | Directory scaffolded, Compose file in progress |
+| Deployment | Deciding between Hugging Face Spaces and Render |
 
 </details>
 
