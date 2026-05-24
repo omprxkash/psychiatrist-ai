@@ -20,8 +20,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-RNG = np.random.default_rng(42)
-
 # ── Clinical thresholds ────────────────────────────────────────────────────────
 
 PHQ9_BANDS = [
@@ -82,7 +80,9 @@ def _band_from_total(total: int, bands: list) -> str:
     return bands[-1][2]
 
 
-def _generate_items(n: int, n_items: int, latent_total: np.ndarray, max_total: int) -> np.ndarray:
+def _generate_items(
+    n: int, n_items: int, latent_total: np.ndarray, max_total: int, rng: np.random.Generator
+) -> np.ndarray:
     """Distribute a latent total score across n_items integer scores in [0,3]."""
     items = np.zeros((n, n_items), dtype=np.int8)
     for i in range(n):
@@ -90,79 +90,77 @@ def _generate_items(n: int, n_items: int, latent_total: np.ndarray, max_total: i
         if target == 0:
             continue
         remaining = target
-        order = RNG.permutation(n_items)
+        order = rng.permutation(n_items)
         for j in order:
             val = min(3, remaining)
-            # Add noise so not always 3-3-3-... padding
-            val = max(0, val - int(RNG.integers(0, 2)))
+            val = max(0, val - int(rng.integers(0, 2)))
             items[i, order[j]] = val
             remaining -= val
             if remaining <= 0:
                 break
-        # Fill any leftover into a random slot
         deficit = target - items[i].sum()
         if deficit > 0:
-            slot = RNG.integers(n_items)
+            slot = rng.integers(n_items)
             items[i, slot] = min(3, items[i, slot] + deficit)
     return items
 
 
-def generate(n: int = 50_000) -> pd.DataFrame:
+def generate(n: int = 50_000, seed: int = 42) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+
     # Severity group: ~40% none, 25% mild, 20% moderate, 10% mod-severe, 5% severe
     severity_weights = [0.40, 0.25, 0.20, 0.10, 0.05]
     severity_midpoints = [2.0, 7.0, 12.0, 17.0, 23.0]
-    severity_stds     = [1.5, 2.0, 2.0,  2.0,  2.0]
+    severity_stds      = [1.5, 2.0, 2.0,  2.0,  2.0]
 
-    group = RNG.choice(5, size=n, p=severity_weights)
+    group = rng.choice(5, size=n, p=severity_weights)
     phq9_latent = np.array([
-        RNG.normal(severity_midpoints[g], severity_stds[g]) for g in group
+        rng.normal(severity_midpoints[g], severity_stds[g]) for g in group
     ])
-    # Anxiety correlates with depression (r ≈ 0.6 in clinical populations)
-    noise = RNG.normal(0, 3, size=n)
-    gad7_latent = 0.6 * phq9_latent * (21 / 27) + 0.4 * noise
+    # Anxiety correlates with depression (r ≈ 0.65 in clinical populations).
+    # Noise SD must be comparable to the signal SD to avoid over-correlation.
+    noise = rng.normal(0, 3, size=n)
+    gad7_latent = 0.6 * phq9_latent * (21 / 27) + noise
 
-    phq9_items_raw = _generate_items(n, 9, phq9_latent, 27)
-    gad7_items_raw = _generate_items(n, 7, gad7_latent, 21)
+    phq9_items_raw = _generate_items(n, 9, phq9_latent, 27, rng)
+    gad7_items_raw = _generate_items(n, 7, gad7_latent, 21, rng)
 
     # PHQ-9 Q9 (suicidal ideation) is sparse — reset it then re-add realistically.
-    # Only ~8% of people with moderate+ depression endorse it.
     phq9_items_raw[:, 8] = 0
     for i in range(n):
         if group[i] >= 3:         # moderately_severe or severe
-            if RNG.random() < 0.45:
-                phq9_items_raw[i, 8] = int(RNG.choice([1, 2, 3], p=[0.5, 0.3, 0.2]))
+            if rng.random() < 0.45:
+                phq9_items_raw[i, 8] = int(rng.choice([1, 2, 3], p=[0.5, 0.3, 0.2]))
         elif group[i] == 2:       # moderate
-            if RNG.random() < 0.12:
+            if rng.random() < 0.12:
                 phq9_items_raw[i, 8] = 1
 
     phq9_total = phq9_items_raw.sum(axis=1).astype(int)
     gad7_total = np.clip(gad7_items_raw.sum(axis=1), 0, 21).astype(int)
 
-    ages = RNG.integers(18, 81, size=n)
-    genders = RNG.choice(
+    ages = rng.integers(18, 81, size=n)
+    genders = rng.choice(
         ["female", "male", "non-binary", "prefer_not_to_say"],
         size=n,
         p=[0.48, 0.45, 0.04, 0.03],
     )
-    education = RNG.choice(
+    education = rng.choice(
         ["secondary", "undergraduate", "postgraduate", "no_formal"],
         size=n,
         p=[0.35, 0.40, 0.18, 0.07],
     )
-    prior_diagnosis = (RNG.random(n) < 0.28).astype(int)
-    on_medication   = (prior_diagnosis.astype(bool) & (RNG.random(n) < 0.55)).astype(int)
+    prior_diagnosis = (rng.random(n) < 0.28).astype(int)
+    on_medication   = (prior_diagnosis.astype(bool) & (rng.random(n) < 0.55)).astype(int)
 
     phq9_band = [_band_from_total(t, PHQ9_BANDS) for t in phq9_total]
     gad7_band = [_band_from_total(t, GAD7_BANDS) for t in gad7_total]
 
-    # Narrative: pick a template based on severity group
     band_keys = ["none", "mild", "moderate", "moderately_severe", "severe"]
     narratives = [
-        RNG.choice(NARRATIVES[band_keys[g]]) for g in group
+        rng.choice(NARRATIVES[band_keys[g]]) for g in group
     ]
 
-    # Train / val / test split: 70 / 15 / 15
-    split_arr = RNG.choice(
+    split_arr = rng.choice(
         ["train", "val", "test"], size=n, p=[0.70, 0.15, 0.15]
     )
 

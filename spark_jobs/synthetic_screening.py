@@ -51,15 +51,15 @@ GAD7_ITEMS = [
 # Calibrated so that population PHQ-9 totals approximate NHANES/NIMHANS distributions.
 PHQ9_THRESHOLDS = np.array(
     [
-        [-0.4, 0.6, 1.7],  # anhedonia — common
-        [-0.5, 0.5, 1.6],  # low mood — most common
-        [-0.3, 0.7, 1.8],  # sleep
-        [-0.2, 0.8, 1.9],  # fatigue
-        [0.0, 1.0, 2.0],   # appetite
-        [0.4, 1.3, 2.1],   # self-worth
-        [0.5, 1.4, 2.2],   # concentration
-        [0.7, 1.6, 2.4],   # psychomotor
-        [1.3, 2.1, 2.8],   # suicidal ideation — rarest, highest threshold
+        [0.6, 1.6, 2.7],  # anhedonia — common
+        [0.5, 1.5, 2.6],  # low mood — most common
+        [0.7, 1.7, 2.8],  # sleep
+        [0.8, 1.8, 2.9],  # fatigue
+        [1.0, 2.0, 3.0],  # appetite
+        [1.4, 2.3, 3.1],  # self-worth
+        [1.5, 2.4, 3.2],  # concentration
+        [1.7, 2.6, 3.4],  # psychomotor
+        [2.3, 3.1, 3.8],  # suicidal ideation — rarest, highest threshold
     ]
 )
 
