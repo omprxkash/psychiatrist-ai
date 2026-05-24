@@ -12,7 +12,7 @@ A linear LangGraph DAG with five nodes sharing one `AgentState` TypedDict:
 START → screening → risk → dsm_literature → care_plan → safety_critic → END
 ```
 
-![Agent pipeline](images/agent_pipeline.png)
+
 
 There are **no conditional edges**. Every node runs on every request. The Safety-Critic always runs last and its verdict (`escalate` / `monitor` / `routine`) is the single output the FastAPI layer routes on.
 
