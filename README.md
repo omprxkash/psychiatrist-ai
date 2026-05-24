@@ -84,7 +84,7 @@ flowchart TD
 - *Layer 1 — deterministic:* scans the narrative sentence by sentence for suicidal ideation keywords, with carve-outs for reported speech ("patient denied any ideation"). If this layer fires, the verdict is `escalate`, Layer 2 is skipped, and nothing downstream can change it.
 - *Layer 2 — LLM verifier:* reviews the generated care plan for hallucinated symptoms, overconfident claims, and things the system shouldn't assert. It can upgrade `routine` → `monitor`, but it cannot downgrade an escalation. For moderate-or-above severity, the minimum verdict is `monitor`.
 
-- ![Agent pipeline](images/agent_pipeline.png)
+![Agent pipeline](images/agent_pipeline.png)
 
 There's a 16-case regression suite covering overt ("I want to end my life") and subtle ("I've been thinking there's no point anymore") suicidal ideation patterns. It runs on every push and must pass at 100% recall. That suite is what I actually trust — not the LLM.
 
