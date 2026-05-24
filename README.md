@@ -2,8 +2,6 @@
 
 A mental-health triage and clinical decision-support system built around a multi-agent pipeline. You fill in a PHQ-9 / GAD-7 screening and a short clinical note; the system gives you back a severity assessment, a safety verdict, and a suggested care plan — with the reasoning surfaced so a clinician could verify (or override) any of it.
 
-> ⚠ Read [SAFETY.md](SAFETY.md) before going further. This is a portfolio engineering project, not a medical device. If you or someone you know is in crisis, the crisis-line directory is in SAFETY.md.
-
 ![Psychiatrist clinical UI](docs/images/hero.png)
 
 ![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB?style=flat&logo=python&logoColor=white)
@@ -13,8 +11,6 @@ A mental-health triage and clinical decision-support system built around a multi
 ![XGBoost](https://img.shields.io/badge/XGBoost-severity_model-337AB7?style=flat)
 ![Safety tests](https://img.shields.io/badge/safety_tests-16%2F16_passing-brightgreen?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
-![Not a medical device](https://img.shields.io/badge/NOT_a_medical_device-%E2%9A%A0_portfolio_only-orange?style=flat)
-
 ---
 
 ## Contents
@@ -149,7 +145,6 @@ psychiatrist data        # generate synthetic records
 
 | Path | Purpose |
 |---|---|
-| [SAFETY.md](SAFETY.md) | Read first — ethics, limitations, crisis lines |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Deep-dive: per-agent design, two-layer Safety-Critic, fallback patterns |
 | [agents/](agents/) | LangGraph DAG + 5 agent nodes including `safety_critic.py` |
 | [models/](models/) | Severity classifier (XGBoost + MLP) and clinical NLP (MentalBERT fine-tune) |
@@ -207,4 +202,4 @@ Where to find evidence for common data-scientist JD bullets:
 
 ## License
 
-MIT — see [LICENSE](LICENSE). DSM-5-TR is copyrighted by the American Psychiatric Association and is not redistributed here; see SAFETY.md for details.
+MIT — see [LICENSE](LICENSE).
